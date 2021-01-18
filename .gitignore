@@ -1,2 +1,4 @@
 .idea/
 src/__pycache__/
+data/tensorboard_log/
+src/.ipynb_checkpoints/

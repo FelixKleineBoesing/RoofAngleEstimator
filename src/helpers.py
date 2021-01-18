@@ -55,18 +55,26 @@ class Scaler:
 
 class Transformer:
 
-    def __init__(self, scaler: Scaler):
+    def __init__(self, scaler: Scaler, column_wise: bool = True):
         self.memory = []
         self.scaler = scaler
+        self.column_wise = column_wise
 
     def transform(self, X):
-        for j in range(X.shape[1]):
-            X[:, j], params = self.scaler.transform(X[:, j])
+        if self.column_wise:
+            for j in range(X.shape[1]):
+                X[:, j], params = self.scaler.transform(X[:, j])
+                self.memory.append(params)
+        else:
+            X[:], params = self.scaler.transform(X)
             self.memory.append(params)
 
     def reform(self, X):
-        for j in range(X.shape[1]):
-            X[:, j] = self.scaler.reform(X[:, j], **self.memory[j])
+        if self.column_wise:
+            for j in range(X.shape[1]):
+                X[:, j] = self.scaler.reform(X[:, j], **self.memory[j])
+        else:
+            X[:] = self.scaler.reform(X, **self.memory[0])
 
 
 class _Standardizer(Scaler):
@@ -85,20 +93,20 @@ class _MinMaxScaler(Scaler):
     def transform(self, x):
         min_ = np.min(x)
         max_ = np.max(x)
-        return (max_ - x) / min_, {"min_": min_, "max_": max_}
+        return (x - min_) / (max_ - min_), {"min_": min_, "max_": max_}
 
     def reform(self, x, min_, max_):
-        return - (x * min_ - max_)
+        return x * (max_ - min_) + min_
 
 
 class StandardizationTransformer(Transformer):
 
-    def __init__(self):
-        super().__init__(scaler=_Standardizer())
+    def __init__(self, column_wise: bool = True):
+        super().__init__(scaler=_Standardizer(), column_wise=column_wise)
 
 
 class MinMaxTransformer(Transformer):
 
-    def __init__(self):
-        super().__init__(scaler=_MinMaxScaler())
+    def __init__(self, column_wise: bool = True):
+        super().__init__(scaler=_MinMaxScaler(), column_wise=column_wise)
 
